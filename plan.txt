@@ -1,0 +1,18 @@
+Upload train.csv and test.csv
+    Editable
+    add rows columns
+Analytics on train.csv and test.csv
+    Report missing values, outliers, and so on
+Select features
+Add features
+transform features (subset of features)
+Select models
+Hot restart
+Use chaining
+Hyperparameter tuning
+Ensemble
+    Different ways
+Display CV score (input reference cost)
+    For each blendproperty
+    As whole
+    Explainability, feature importance (SHAP, or other tools if necessary)
