@@ -1,6 +1,4 @@
 Upload train.csv and test.csv
-    Editable
-    add rows columns
 Analytics on train.csv and test.csv
     Report missing values, outliers, and so on
 Select features
@@ -16,3 +14,5 @@ Display CV score (input reference cost)
     For each blendproperty
     As whole
     Explainability, feature importance (SHAP, or other tools if necessary)
+
+
