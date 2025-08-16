@@ -154,7 +154,7 @@ with st.container(height=350):
                 df_best_hparams = pd.concat([df_best_hparams, df_cur_best])
                 os.makedirs('./optuna/tabm_cv', exist_ok=True)
                 
-                hparam_files = glob('./optuna/tabm_cv/*')
+                hparam_files = glob('./optuna/tabm_cv/*_v*')
                 
                 latest_run = max([int(file_name.split('_v')[-1].split('.')[0]) for file_name in hparam_files])
                 

@@ -8,6 +8,7 @@ Select models
 Hot restart
 Use chaining
 Hyperparameter tuning
+    Use different seeds for different tunings maybe? Because 3rd/4th fold always gets a low score, maybe the samples are not that predictive. 
 Ensemble
     Different ways
 Display CV score (input reference cost)
