@@ -136,7 +136,7 @@ with st.container(height=350):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
-                def streamlit_callback(study, n_trials):
+                def streamlit_callback(study, trial):
                     completed = len(study.trials)
                     progress_bar.progress(completed / n_trials)
                     status_text.text(f"Running trial {completed}/{n_trials}")
