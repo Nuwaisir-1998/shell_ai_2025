@@ -477,7 +477,7 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
     return score, test_preds_avg
 
 
-def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=100, n_splits=5):
+def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5):
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     col_name = target_col
     df_oof_preds = df_train[[col_name]].copy()

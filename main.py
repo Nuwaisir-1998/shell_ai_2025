@@ -130,7 +130,7 @@ with st.container(height=350):
             
             for target_col in selected_target_cols:
                 def objective(trial):
-                    score = apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5)
+                    score = apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=100, n_splits=5)
                     return score
                 
                 progress_bar = st.progress(0)
