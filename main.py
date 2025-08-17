@@ -39,9 +39,9 @@ st.markdown("# Shell.ai Hackathon 2025")
 
 # st.sidebar.markdown("# Main page")
 
-# col1, col2 = st.columns(2)
+# col_run_tabm, col2 = st.columns(2)
 
-# with col1:
+# with col_run_tabm:
 df_train = st.session_state['df_train']
 'X_train dimension:', df_train[feature_cols].shape
 # 'y_train dimension:', df_train[target_cols].shape
@@ -52,6 +52,12 @@ for model in models:
     if model not in st.session_state:
         st.session_state[model] = {}
         st.session_state[model]['show_sidebar'] = False
+        if 'seed_lower' not in st.session_state[model]:
+            st.session_state[model]['seed_lower'] = 42
+        if 'seed_upper' not in st.session_state[model]:
+            st.session_state[model]['seed_upper'] = 42
+        if 'n_trials' not in st.session_state['tabm']:
+            st.session_state[model]['n_trials'] = 100
 
 
 options = target_cols
@@ -68,7 +74,7 @@ selected_target_cols = st.multiselect(
 st.session_state['selected_target_cols'] = selected_target_cols
 
 
-with st.container(height=350):
+with st.container(height=400):
     cur_model = 'tabm'
     st.header('TabM')
     # 'CV scores:'
@@ -95,14 +101,19 @@ with st.container(height=350):
     
         
     st.markdown('##### Run TabM')
-    col0, col1, col2 = st.columns([1.5, 1, 1.6])
-    with col0:
+
+
+    col_set_hyperparameters, col_run_tabm = st.columns([1, 1])
+    col_tune_hyperparameters, col_seed_lower, col_seed_lower_input, col_seed_upper, col_seed_upper_input, col_n_trials, col_n_trials_input = st.columns([3, 1, 1, 1, 1, 1, 1])
+    
+    
+    with col_set_hyperparameters:
         if st.button('Set Hyperparameters', use_container_width=True):
             for model in models:
                 st.session_state[model]['show_sidebar'] = False
             st.session_state[cur_model]['show_sidebar'] = True
-            
-    with col1:
+         
+    with col_run_tabm:
         if st.button('Run Tabm', use_container_width=True):
             for target_col in selected_target_cols:
                 hparams = st.session_state['tabm'][f'hparams_{target_col}']
@@ -119,10 +130,8 @@ with st.container(height=350):
                 
                 score, _ = apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5, callback=update_progress)
                 score
-                
-                
-    
-    with col2:
+                         
+    with col_tune_hyperparameters:
         df_best_hparams = None
         if st.button('Tune Hyperparameters', use_container_width=True):
             
@@ -160,10 +169,43 @@ with st.container(height=350):
                 
                 df_best_hparams.to_csv(f'./optuna/tabm_cv/hparams_cv_v{latest_run + 1}.csv')
         
+    with col_seed_lower:
+        'Seed lower:'
+
+    with col_seed_lower_input:
         
-    # with st.sidebar:
-    #     st.session_state
+        seed_lower = st.text_input(
+                            label='',
+                            value=42,  # default = best
+                            key=f'tabm_seed_lower',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['seed_lower'] = seed_lower
     
+    with col_seed_upper:
+        'Seed upper:'
+
+    with col_seed_upper_input:
+        seed_upper = st.text_input(
+                            label='',
+                            value=42,  # default = best
+                            key=f'tabm_seed_upper',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['seed_upper'] = seed_upper
+    
+    with col_n_trials:
+        '\# of trials:'
+    
+    with col_n_trials_input:
+        n_trials = st.text_input(
+                            label='',
+                            value=100,  # default = best
+                            key=f'tabm_n_trials',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['tabm']['n_trials'] = n_trials
+        
     
     
     with st.sidebar:
