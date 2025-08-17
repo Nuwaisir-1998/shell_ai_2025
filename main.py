@@ -82,7 +82,7 @@ selected_target_cols = st.multiselect(
 st.session_state['selected_target_cols'] = selected_target_cols
 
 
-with st.container(height=400):
+with st.container(height=420):
     cur_model = 'tabm'
     st.header('TabM')
     # 'CV scores:'
