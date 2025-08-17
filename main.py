@@ -56,8 +56,16 @@ for model in models:
             st.session_state[model]['seed_lower'] = 42
         if 'seed_upper' not in st.session_state[model]:
             st.session_state[model]['seed_upper'] = 42
-        if 'n_trials' not in st.session_state['tabm']:
+        if 'n_trials' not in st.session_state[model]:
             st.session_state[model]['n_trials'] = 100
+        if 'run_seed_lower' not in st.session_state[model]:
+            st.session_state[model]['run_seed_lower'] = 42
+        if 'run_seed_upper' not in st.session_state[model]:
+            st.session_state[model]['run_seed_upper'] = 42
+        if 'n_splits' not in st.session_state[model]:
+            st.session_state[model]['n_splits'] = 5
+        if 'tuner_splits' not in st.session_state[model]:
+            st.session_state[model]['tuner_splits'] = 5
 
 
 options = target_cols
@@ -103,34 +111,78 @@ with st.container(height=400):
     st.markdown('##### Run TabM')
 
 
-    col_set_hyperparameters, col_run_tabm = st.columns([1, 1])
-    col_tune_hyperparameters, col_seed_lower, col_seed_lower_input, col_seed_upper, col_seed_upper_input, col_n_trials, col_n_trials_input = st.columns([3, 1, 1, 1, 1, 1, 1])
-    
+    col_run_seed_lower, col_run_seed_lower_input, col_run_seed_upper, col_run_seed_upper_input, col_n_splits, col_n_splits_input, col_set_hyperparameters, col_run_tabm = st.columns([0.4, 0.4, .4, 0.4, 0.4, 0.4, 1.1, 0.9])
     
     with col_set_hyperparameters:
         if st.button('Set Hyperparameters', use_container_width=True):
             for model in models:
                 st.session_state[model]['show_sidebar'] = False
             st.session_state[cur_model]['show_sidebar'] = True
-         
+                           
+    with col_run_seed_lower:
+        'Seed lower:'
+    
+    with col_run_seed_lower_input:
+        run_seed_lower = st.text_input(
+                            label='',
+                            value=42,  # default = best
+                            key=f'tabm_run_seed_lower_input',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['tabm']['run_seed_lower'] = run_seed_lower
+    
+    with col_run_seed_upper:
+        'Seed upper:'
+    
+    with col_run_seed_upper_input:
+        run_seed_upper = st.text_input(
+                            label='',
+                            value=42,  # default = best
+                            key=f'tabm_run_seed_upper_input',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['tabm']['run_seed_upper'] = run_seed_upper
+    
+    
+    with col_n_splits:
+        'Splits:'
+    
+    with col_n_splits_input:
+        n_splits = st.text_input(
+                            label='',
+                            value=5,
+                            key=f'n_splits_input',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['tabm']['n_splits'] = n_splits
+    
     with col_run_tabm:
         if st.button('Run Tabm', use_container_width=True):
             for target_col in selected_target_cols:
-                hparams = st.session_state['tabm'][f'hparams_{target_col}']
-                hparams['k'] = 32
-                df_train = st.session_state['df_train']
-                feature_cols = st.session_state['feature_cols']
-                
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                def update_progress(current, total):
-                    percent = current / total
-                    progress_bar.progress(percent)
-                    status_text.text(f"Processing fold {current}/{total}")
-                
-                score, _ = apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5, callback=update_progress)
-                score
-                         
+                run_seed_lower = int(st.session_state['tabm']['run_seed_lower'])
+                run_seed_upper = int(st.session_state['tabm']['run_seed_upper'])
+                for seed in range(run_seed_lower, run_seed_upper + 1):
+                    hparams = st.session_state['tabm'][f'hparams_{target_col}']
+                    hparams['k'] = 32
+                    df_train = st.session_state['df_train']
+                    feature_cols = st.session_state['feature_cols']
+                    
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    def update_progress(current, total):
+                        percent = current / total
+                        progress_bar.progress(percent)
+                        status_text.text(f"Processing fold {current}/{total}")
+                        
+                    n_splits = int(st.session_state['tabm']['n_splits'])
+                    
+                    score, _ = apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, target_col, seed=seed, n_splits=n_splits, callback=update_progress)
+                    score
+        
+    
+    
+    col_seed_lower, col_seed_lower_input, col_seed_upper, col_seed_upper_input, col_tuner_splits, col_tuner_splits_input, col_n_trials, col_n_trials_input, col_tune_hyperparameters = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 3])
+    
     with col_tune_hyperparameters:
         df_best_hparams = None
         if st.button('Tune Hyperparameters', use_container_width=True):
@@ -180,7 +232,7 @@ with st.container(height=400):
                             key=f'tabm_seed_lower',
                             label_visibility="collapsed",
                         )
-        st.session_state['seed_lower'] = seed_lower
+        st.session_state['tabm']['seed_lower'] = seed_lower
     
     with col_seed_upper:
         'Seed upper:'
@@ -192,7 +244,7 @@ with st.container(height=400):
                             key=f'tabm_seed_upper',
                             label_visibility="collapsed",
                         )
-        st.session_state['seed_upper'] = seed_upper
+        st.session_state['tabm']['seed_upper'] = seed_upper
     
     with col_n_trials:
         '\# of trials:'
@@ -205,7 +257,18 @@ with st.container(height=400):
                             label_visibility="collapsed",
                         )
         st.session_state['tabm']['n_trials'] = n_trials
-        
+    
+    with col_tuner_splits:
+        'Splits:' 
+    
+    with col_tuner_splits_input:
+        tuner_splits = st.text_input(
+                            label='',
+                            value=5,  # default = best
+                            key=f'tabm_tuner_splits',
+                            label_visibility="collapsed",
+                        )
+        st.session_state['tabm']['tuner_splits'] = tuner_splits
     
     
     with st.sidebar:
