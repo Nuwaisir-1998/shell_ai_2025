@@ -174,7 +174,7 @@ with st.container(height=420):
                         
                     n_splits = int(st.session_state['tabm']['n_splits'])
                     
-                    score, _ = apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, target_col, seed=seed, n_splits=n_splits, callback=update_progress)
+                    score, _, _ = apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, target_col, seed=seed, n_splits=n_splits, callback=update_progress)
                     score
         
     

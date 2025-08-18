@@ -32,8 +32,7 @@ def hash_dataframe(df: pd.DataFrame) -> str:
     """Stable hash for a DataFrame (content + index)"""
     return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
 
-def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame,
-              df_test_pred: pd.DataFrame, feature_cols: list, target_col: str) -> str:
+def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame, df_test_pred: pd.DataFrame, feature_cols: list, target_col: str, n_split='None', seed='None') -> str:
     """Generate a unique hash string for given inputs"""
     key_data = {
         "hparams": hparams,
@@ -42,6 +41,8 @@ def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame,
         "train_hash": hash_dataframe(train_fold),
         "val_hash": hash_dataframe(val_fold),
         "test_hash": hash_dataframe(df_test_pred),
+        "n_split": str(n_split),
+        "seed": str(seed),
     }
     key_str = json.dumps(key_data, sort_keys=True, default=str)  # default=str handles numpy types
     return hashlib.md5(key_str.encode()).hexdigest()
@@ -488,7 +489,26 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
 
 def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=42, n_splits=5, callback=None):
     
-    # n_splits = 5
+    all_run_dirs = glob(f'./runs/tabm_cv/cv_run*')
+    hash = make_hash(hparams, df_train, df_test_pred, feature_cols, col_name)
+    with open("./runs/tabm_cv/map_run_key_to_num.json", "r") as f:
+        map_hash_run = json.load(f)
+        if hash in map_hash_run:
+            print('Found hash!')
+            run_dir = map_hash_run[hash]
+            score_df = pd.read_csv(f'./runs/tabm_cv/{run_dir}/score.csv')
+            df_oof_preds = np.load(f'./runs/tabm_cv/{run_dir}/df_oof_preds.npy')
+            test_preds_avg = np.load(f'./runs/tabm_cv/{run_dir}/test_preds_avg.npy')
+            return score_df['Score'].values[0], df_oof_preds, test_preds_avg
+        else:
+            latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+            map_hash_run[hash] = f'cv_run_{latest_run + 1}'
+    
+    with open("./runs/tabm_cv/map_run_key_to_num.json", "w") as f:
+        f.write(json.dumps(map_hash_run, indent=4))  # indent=4 makes it human-readable
+        
+        
+        
     
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     # col_name = f'BlendProperty{target_col - 55 + 1}'
@@ -523,7 +543,15 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
         col_num = 10
     os.makedirs(f'./Ensemble_tabm/{col_name}', exist_ok=True)
     np.save(f'./Ensemble_tabm/{col_name}/oof_b{col_num}_seed_{seed}_splits_{n_splits}_score_{score}.npy', df_oof_preds[col_name].values)
-    return score, test_preds_avg
+    
+    latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+    save_path = f'./runs/tabm/run_{latest_run + 1}'
+    os.makedirs(save_path)
+    pd.DataFrame([score], columns=['Score']).to_csv(f"{save_path}/score.csv")
+    np.save(f'{save_path}/df_oof_preds.npy', df_oof_preds[col_name].values)
+    np.save(f'{save_path}/test_preds.npy', test_preds)
+    
+    return score, df_oof_preds, test_preds_avg
 
 
 def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5):
@@ -545,8 +573,9 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
         hparams['arch_type'] = trial.suggest_categorical('arch_type', ['tabm', 'tabm-mini'])
         hparams['lr'] = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
         hparams['weight_decay'] = trial.suggest_float("weight_decay", 1e-4, 1e-1, log=True)
-        hparams['share_training_batches_var'] = trial.suggest_categorical('share_training_batches', ['T', 'F'])
+        hparams['share_training_batches'] = trial.suggest_categorical('share_training_batches', ['T', 'F'])
 
+        hparams['k'] = 32
         
         score, val_preds, test_preds = apply_tabm(hparams, train_fold, val_fold, df_test_pred, feature_cols, target_col)
         df_oof_preds.loc[df_train.index[val_idx], col_name] = val_preds
