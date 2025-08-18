@@ -117,13 +117,17 @@ if 'selected_target_cols' not in st.session_state:
     st.session_state['selected_target_cols'] = None
 else:
     selected_target_cols = st.session_state.selected_target_cols
+    
+if 'selected_target_cols_temp' not in st.session_state:
+    st.session_state['selected_target_cols_temp'] = []
 
 selected_target_cols = st.multiselect(
     "Select one or more target labels to predict:",
     options,
-    # default=selected_target_cols,
+    default=st.session_state['selected_target_cols_temp'],
 )
 
+st.session_state['selected_target_cols_temp'] = selected_target_cols
 st.session_state['selected_target_cols'] = selected_target_cols
 
 with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
@@ -157,9 +161,9 @@ with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
     df_cv_score.index = ['CV Score']   
     st.table(df_cv_score)
     
-    if len(selected_target_cols) > 0 :
-        with st.expander('Hyperparameters'):
-            hparams_all
+    # if len(selected_target_cols) > 0 :
+    #     with st.expander('Hyperparameters'):
+    #         hparams_all
         
     # if "show_sidebar_tabm" not in st.session_state:
     #     st.session_state.show_sidebar_tabm = False
@@ -215,7 +219,7 @@ with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
         st.session_state['tabm']['n_splits'] = n_splits
     
     with col_run_tabm:
-        if st.button('Run Tabm', use_container_width=True):
+        if st.button('Run Tabm', use_container_width=True, help='Runs TabM one by one for each of the selected targets.'):
             for target_col in selected_target_cols:
                 run_seed_lower = int(st.session_state['tabm']['run_seed_lower'])
                 run_seed_upper = int(st.session_state['tabm']['run_seed_upper'])
