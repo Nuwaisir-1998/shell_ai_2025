@@ -63,6 +63,10 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
             latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
             map_hash_run[hash] = f'run_{latest_run + 1}'
     
+    with open("./runs/tabm/map_run_key_to_num.json", "w") as f:
+        f.write(json.dumps(map_hash_run, indent=4))  # indent=4 makes it human-readable
+            
+    
 
     # target_col: [55, 64]
     
