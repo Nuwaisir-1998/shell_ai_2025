@@ -62,7 +62,7 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
             return score_df['Score'].values[0], val_preds, test_preds
         else:
             latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
-            map_hash_run[hash] = f'run_{latest_run + 1}'
+            # map_hash_run[hash] = f'run_{latest_run + 1}'
     
     with open("./runs/tabm/map_run_key_to_num.json", "w") as f:
         f.write(json.dumps(map_hash_run, indent=4))  # indent=4 makes it human-readable
@@ -131,6 +131,8 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
     # Apply the preprocessing.
     for part in data_numpy:
         data_numpy[part]['x_num'] = preprocessing.transform(data_numpy[part]['x_num'])
+        
+        # np.save(f'./dataset/{part}_qt.npy', data_numpy[part]['x_num'])
 
 
     # Label preprocessing.
@@ -486,6 +488,7 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
     np.save(f'{save_path}/test_preds.npy', test_preds)
     hparams['score'] = best_checkpoint["metrics"]["val"]
     hparams['target_col_name'] = target_col_name
+    map_hash_run[hash] = f'run_{latest_run + 1}'
 
     with open(f'{save_path}/params.json', "w") as f:
         f.write(json.dumps(hparams, indent=4))  # indent=4 makes it human-readable
@@ -507,7 +510,7 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
             return score_df['Score'].values[0], df_oof_preds, test_preds_avg
         else:
             latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
-            map_hash_run[hash] = f'cv_run_{latest_run + 1}'
+            # map_hash_run[hash] = f'cv_run_{latest_run + 1}'
     
     with open("./runs/tabm_cv/map_run_key_to_num.json", "w") as f:
         f.write(json.dumps(map_hash_run, indent=4))  # indent=4 makes it human-readable
@@ -560,6 +563,7 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
     hparams['target_col_name'] = col_name
     hparams['seed'] = seed
     hparams['n_splits'] = n_splits
+    map_hash_run[hash] = f'cv_run_{latest_run + 1}'
     
     with open(f'{save_path}/params.json', "w") as f:
         f.write(json.dumps(hparams, indent=4))  # indent=4 makes it human-readable

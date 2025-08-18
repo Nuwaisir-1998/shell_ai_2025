@@ -127,7 +127,7 @@ selected_target_cols = st.multiselect(
 
 st.session_state['selected_target_cols'] = selected_target_cols
 
-with st.expander('TabM'):
+with st.expander('TabM', expanded=True):
     # with st.container(height=420):
     cur_model = 'tabm'
     # st.header('TabM')
@@ -141,12 +141,16 @@ with st.expander('TabM'):
         if len(runs) > 0:
             df = pd.DataFrame(runs).sort_values(by="score", ascending=False)
             df_cv_score['BP'+target_col.split('BlendProperty')[-1]] = [df['score'].values[0]]
-            best_hparams = df.iloc[0].to_dict()
+            # df['params'].iloc[0]
+            # df.iloc[0]['params']
+            best_hparams = df.iloc[0]['params']
+            # best_hparams
             
         else:
             hparams = hparams_all[hparams_all['Target'] == target_col]
             df_cv_score['BP'+target_col.split('BlendProperty')[-1]] = hparams['Score']
             best_hparams = hparams.iloc[0].to_dict()
+            "This should not be printed."
             
         if f'hparams_{target_col}' not in st.session_state['tabm']:
             st.session_state['tabm'][f'hparams_{target_col}'] = best_hparams
@@ -219,6 +223,7 @@ with st.expander('TabM'):
                 for seed in range(run_seed_lower, run_seed_upper + 1):
                     hparams = st.session_state['tabm'][f'hparams_{target_col}']
                     hparams['k'] = 32
+                    # hparams
                     df_train = st.session_state['df_train']
                     feature_cols = st.session_state['feature_cols']
                     
@@ -386,13 +391,13 @@ with st.expander('TabM'):
         #     'Autogluon'
 
 
-with st.expander('Autogluon'):
-    cur_model = 'autogluon'
-    ag_preset = st.selectbox("Preset", ['best quality', 'experimental quality'])
-    ag_time = st.text_input("Max time per target (sec)", value=600)
-    if st.button('Run'):
-        # from autogluon.tabular import TabularPredictor
-        from tqdm import tqdm
+# with st.expander('Autogluon'):
+#     cur_model = 'autogluon'
+#     ag_preset = st.selectbox("Preset", ['best quality', 'experimental quality'])
+#     ag_time = st.text_input("Max time per target (sec)", value=600)
+#     if st.button('Run'):
+#         # from autogluon.tabular import TabularPredictor
+#         from tqdm import tqdm
     
     
                     
