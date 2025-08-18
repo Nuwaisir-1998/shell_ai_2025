@@ -13,6 +13,11 @@ from glob import glob
 
 from my_tabm import apply_tabm_cv, apply_tabm_cv_tune
 
+st.set_page_config(
+    page_title="Shell.ai 25",
+    layout="wide"  # This enables wide mode
+)
+
 df_train = pd.read_csv("./dataset/train.csv")
 df_test = pd.read_csv("./dataset/test.csv")
 df_best = pd.read_csv('./submission_cur_best+tabm_b1234_10fold(cb)_93.92695.csv')
@@ -68,21 +73,24 @@ for model in models:
 
 options = target_cols
 
-if 'selected_target_cols' in st.session_state:
-    selected_target_cols = st.session_state['selected_target_cols']
+if 'selected_target_cols' not in st.session_state:
+    'Not found'
+    st.session_state['selected_target_cols'] = None
+else:
+    selected_target_cols = st.session_state.selected_target_cols
 
 selected_target_cols = st.multiselect(
     "Select one or more target labels to predict:",
     options,
-    # default=st.session_state.selected_target_cols,
+    # default=selected_target_cols,
 )
 
 st.session_state['selected_target_cols'] = selected_target_cols
 
-
-with st.container(height=420):
+with st.expander('TabM'):
+    # with st.container(height=420):
     cur_model = 'tabm'
-    st.header('TabM')
+    # st.header('TabM')
     # 'CV scores:'
     hparams_all = pd.read_csv("./optuna/tabm_cv/hparams_cv.csv", index_col=0)
     
@@ -116,7 +124,7 @@ with st.container(height=420):
             for model in models:
                 st.session_state[model]['show_sidebar'] = False
             st.session_state[cur_model]['show_sidebar'] = True
-                           
+                        
     with col_run_seed_lower:
         'Seed lower:'
     
@@ -165,8 +173,8 @@ with st.container(height=420):
                     df_train = st.session_state['df_train']
                     feature_cols = st.session_state['feature_cols']
                     
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                    progress_bar = st.sidebar.progress(0)
+                    status_text = st.sidebar.empty()
                     def update_progress(current, total):
                         percent = current / total
                         progress_bar.progress(percent)
@@ -196,8 +204,8 @@ with st.container(height=420):
                         score = apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=100, n_splits=tuner_splits)
                         return score
                     
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                    progress_bar = st.sidebar.progress(0)
+                    status_text = st.sidebar.empty()
                     
                     def streamlit_callback(study, trial):
                         completed = len(study.trials)
@@ -273,7 +281,7 @@ with st.container(height=420):
                         )
         st.session_state['tabm']['tuner_splits'] = tuner_splits
     
-    
+        
     with st.sidebar:
         if st.session_state['tabm']['show_sidebar']:
             st.markdown("## Choose TabM Hyperparameters")
@@ -324,7 +332,12 @@ with st.container(height=420):
                     st.write("Updated Hyperparameters:", updated_hparams)
                     
                     st.session_state['tabm'][f'hparams_{target_col}'] = updated_hparams
-                    
+        
+        # if st.session_state['autogluon']['show_sidebar']:
+        #     'Autogluon'
+with st.expander('Autogluon'):
+    cur_model = 'autogluon'
+    
                     
             
         

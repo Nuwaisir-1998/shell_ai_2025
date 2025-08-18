@@ -641,7 +641,6 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
     
     return score
         
-
 def apply_tabm_tune(trial, df_train, df_val, df_test_pred, feature_cols, target_col):
 
     # target_col: [55, 64]
