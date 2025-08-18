@@ -484,6 +484,12 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
     pd.DataFrame([best_checkpoint["metrics"]["val"]], columns=['Score']).to_csv(f"{save_path}/score.csv")
     np.save(f'{save_path}/val_preds.npy', val_preds)
     np.save(f'{save_path}/test_preds.npy', test_preds)
+    hparams['score'] = best_checkpoint["metrics"]["val"]
+    hparams['target_col_name'] = target_col_name
+
+    
+    with open(f'{save_path}/params.json', "w") as f:
+        json.dump(hparams)
     
     return best_checkpoint["metrics"]["val"], val_preds, test_preds
 
@@ -550,6 +556,14 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
     pd.DataFrame([score], columns=['Score']).to_csv(f"{save_path}/score.csv")
     np.save(f'{save_path}/df_oof_preds.npy', df_oof_preds[col_name].values)
     np.save(f'{save_path}/test_preds.npy', test_preds)
+    
+    hparams['score'] = score
+    hparams['target_col_name'] = col_name
+    hparams['seed'] = seed
+    hparams['n_splits'] = n_splits
+    
+    with open(f'{save_path}/params.json', "w") as f:
+        json.dump(hparams)
     
     return score, df_oof_preds, test_preds_avg
 
@@ -618,7 +632,15 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
     np.save(f'{save_path}/df_oof_preds.npy', df_oof_preds[col_name].values)
     np.save(f'{save_path}/test_preds.npy', test_preds)
     
-    return 100 - 90 * mape / 2.72
+    hparams['score'] = score
+    hparams['target_col_name'] = col_name
+    hparams['seed'] = seed
+    hparams['n_splits'] = n_splits
+    
+    with open(f'{save_path}/hparams.json', "w") as f:
+        json.dump(hparams)
+    
+    return score
         
 
 def apply_tabm_tune(trial, df_train, df_val, df_test_pred, feature_cols, target_col):
