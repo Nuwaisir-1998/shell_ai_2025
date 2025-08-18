@@ -10,6 +10,7 @@ from optuna.samplers import TPESampler
 from tqdm import tqdm
 import os
 from glob import glob
+import json
 
 from my_tabm import apply_tabm_cv, apply_tabm_cv_tune
 
@@ -17,6 +18,45 @@ st.set_page_config(
     page_title="Shell.ai 25",
     layout="wide"  # This enables wide mode
 )
+
+
+def load_cv_runs(base_dirs, target_col):
+    runs = []
+    for base_dir in base_dirs:
+        for run_dir in os.listdir(base_dir):
+            run_path = os.path.join(base_dir, run_dir)
+            if not os.path.isdir(run_path):
+                continue
+
+            score_file = os.path.join(run_path, "score.csv")
+            params_file = os.path.join(run_path, "params.json")
+
+            if not os.path.exists(score_file) or not os.path.exists(params_file):
+                continue
+
+            # read score
+            score = float(pd.read_csv(score_file)['Score'].values[0])
+
+            # read params
+            with open(params_file, "r") as f:
+                params = json.load(f)
+            
+            seed = ''
+            
+            if 'seed' in params:
+                seed = params['seed']
+            
+            method_name = base_dir.split('/')[-1]
+            
+            if params['target_col_name'] == target_col:
+                runs.append({
+                    "run": f'{run_dir}_seed:{seed} ({method_name})',
+                    "score": score,
+                    "params": params,
+                    "oof_preds": np.load(os.path.join(run_path, 'df_oof_preds.npy')),
+                })
+    return runs
+
 
 df_train = pd.read_csv("./dataset/train.csv")
 df_test = pd.read_csv("./dataset/test.csv")
@@ -96,9 +136,18 @@ with st.expander('TabM'):
     
     df_cv_score = pd.DataFrame()
     for target_col in selected_target_cols:
-        hparams = hparams_all[hparams_all['Target'] == target_col]
-        df_cv_score['BP'+target_col.split('BlendProperty')[-1]] = hparams['Score']
-        best_hparams = hparams.iloc[0].to_dict()
+        runs = load_cv_runs(['./runs/tabm_cv'], target_col=target_col)
+        
+        if len(runs) > 0:
+            df = pd.DataFrame(runs).sort_values(by="score", ascending=False)
+            df_cv_score['BP'+target_col.split('BlendProperty')[-1]] = [df['score'].values[0]]
+            best_hparams = df.iloc[0].to_dict()
+            
+        else:
+            hparams = hparams_all[hparams_all['Target'] == target_col]
+            df_cv_score['BP'+target_col.split('BlendProperty')[-1]] = hparams['Score']
+            best_hparams = hparams.iloc[0].to_dict()
+            
         if f'hparams_{target_col}' not in st.session_state['tabm']:
             st.session_state['tabm'][f'hparams_{target_col}'] = best_hparams
     
@@ -329,14 +378,22 @@ with st.expander('TabM'):
                             key=f'{target_col}_{key}_text_input',
                         )
 
-                    st.write("Updated Hyperparameters:", updated_hparams)
+                    # st.write("Updated Hyperparameters:", updated_hparams)
                     
                     st.session_state['tabm'][f'hparams_{target_col}'] = updated_hparams
         
         # if st.session_state['autogluon']['show_sidebar']:
         #     'Autogluon'
+
+
 with st.expander('Autogluon'):
     cur_model = 'autogluon'
+    ag_preset = st.selectbox("Preset", ['best quality', 'experimental quality'])
+    ag_time = st.text_input("Max time per target (sec)", value=600)
+    if st.button('Run'):
+        # from autogluon.tabular import TabularPredictor
+        from tqdm import tqdm
+    
     
                     
             

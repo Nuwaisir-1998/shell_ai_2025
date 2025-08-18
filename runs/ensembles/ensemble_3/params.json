@@ -1,0 +1,14 @@
+{
+    "target_col_name": "BlendProperty3",
+    "score": 85.92386641394518,
+    "ensemble_candidates": [
+        "./Ensemble_oofs/BlendProperty3/cv_run_21_seed:6 (tabm_cv)_score_82.98636104483504.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_16_seed:1 (tabm_cv)_score_78.29528209034689.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_15_seed:0 (tabm_cv)_score_85.92856913350451.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_19_seed:4 (tabm_cv)_score_83.4013123214377.npy",
+        "./Ensemble_oofs/BlendProperty3/run_3_seed:NA (autogluon_best)_score_84.84160634609567.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_20_seed:5 (tabm_cv)_score_81.80349243896522.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_17_seed:2 (tabm_cv)_score_81.90435472576806.npy",
+        "./Ensemble_oofs/BlendProperty3/cv_run_18_seed:3 (tabm_cv)_score_80.23412018951727.npy"
+    ]
+}
