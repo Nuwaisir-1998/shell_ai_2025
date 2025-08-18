@@ -487,9 +487,8 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
     hparams['score'] = best_checkpoint["metrics"]["val"]
     hparams['target_col_name'] = target_col_name
 
-    
     with open(f'{save_path}/params.json', "w") as f:
-        json.dump(hparams)
+        f.write(json.dumps(hparams, indent=4))  # indent=4 makes it human-readable
     
     return best_checkpoint["metrics"]["val"], val_preds, test_preds
 
@@ -563,7 +562,7 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
     hparams['n_splits'] = n_splits
     
     with open(f'{save_path}/params.json', "w") as f:
-        json.dump(hparams)
+        f.write(json.dumps(hparams, indent=4))  # indent=4 makes it human-readable
     
     return score, df_oof_preds, test_preds_avg
 
@@ -637,8 +636,8 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
     hparams['seed'] = seed
     hparams['n_splits'] = n_splits
     
-    with open(f'{save_path}/hparams.json', "w") as f:
-        json.dump(hparams)
+    with open(f'{save_path}/params.json', "w") as f:
+        f.write(json.dumps(hparams, indent=4))  # indent=4 makes it human-readable
     
     return score
         
