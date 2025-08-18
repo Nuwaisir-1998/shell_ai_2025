@@ -32,7 +32,7 @@ def hash_dataframe(df: pd.DataFrame) -> str:
     """Stable hash for a DataFrame (content + index)"""
     return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
 
-def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame, df_test_pred: pd.DataFrame, feature_cols: list, target_col: str, n_split='None', seed='None') -> str:
+def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame, df_test_pred: pd.DataFrame, feature_cols: list, target_col: str, n_splits='None', seed='None') -> str:
     """Generate a unique hash string for given inputs"""
     key_data = {
         "hparams": hparams,
@@ -41,7 +41,7 @@ def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame, d
         "train_hash": hash_dataframe(train_fold),
         "val_hash": hash_dataframe(val_fold),
         "test_hash": hash_dataframe(df_test_pred),
-        "n_split": str(n_split),
+        "n_split": str(n_splits),
         "seed": str(seed),
     }
     key_str = json.dumps(key_data, sort_keys=True, default=str)  # default=str handles numpy types
@@ -490,7 +490,7 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
 def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=42, n_splits=5, callback=None):
     
     all_run_dirs = glob(f'./runs/tabm_cv/cv_run*')
-    hash = make_hash(hparams, df_train, df_test_pred, feature_cols, col_name)
+    hash = make_hash(hparams, df_train, df_train, df_test_pred, feature_cols, col_name, seed=seed, n_splits=n_splits)
     with open("./runs/tabm_cv/map_run_key_to_num.json", "r") as f:
         map_hash_run = json.load(f)
         if hash in map_hash_run:
@@ -545,7 +545,7 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
     np.save(f'./Ensemble_tabm/{col_name}/oof_b{col_num}_seed_{seed}_splits_{n_splits}_score_{score}.npy', df_oof_preds[col_name].values)
     
     latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
-    save_path = f'./runs/tabm/run_{latest_run + 1}'
+    save_path = f'./runs/tabm_cv/cv_run_{latest_run + 1}'
     os.makedirs(save_path)
     pd.DataFrame([score], columns=['Score']).to_csv(f"{save_path}/score.csv")
     np.save(f'{save_path}/df_oof_preds.npy', df_oof_preds[col_name].values)
@@ -555,27 +555,49 @@ def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=
 
 
 def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=42, n_splits=5):
+        
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     col_name = target_col
     df_oof_preds = df_train[[col_name]].copy()
-    print(col_name)
+    
+    hparams = {}
+    hparams['embedding_type'] = trial.suggest_categorical('embedding_type', ['PeriodicEmbeddings', 'PiecewiseLinearEmbeddings'])
+    hparams['n_bins'] = trial.suggest_int('n_bins', 2, 128) # prev 48
+    hparams['d_embedding'] = trial.suggest_int('d_embedding', 8, 32, step=4) # prev 16
+    hparams['n_blocks'] = trial.suggest_int("n_blocks", 1, 4)
+    hparams['d_block'] = trial.suggest_int("d_block", 64, 1024, step=16)
+    hparams['arch_type'] = trial.suggest_categorical('arch_type', ['tabm', 'tabm-mini'])
+    hparams['lr'] = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+    hparams['weight_decay'] = trial.suggest_float("weight_decay", 1e-4, 1e-1, log=True)
+    hparams['share_training_batches'] = trial.suggest_categorical('share_training_batches', ['T', 'F'])
+    hparams['k'] = 32
+    
+    
+    all_run_dirs = glob(f'./runs/tabm_cv/cv_run*')
+    hash = make_hash(hparams, df_train, df_train, df_test_pred, feature_cols, target_col, seed=seed, n_splits=n_splits)
+    with open("./runs/tabm_cv/map_run_key_to_num.json", "r") as f:
+        map_hash_run = json.load(f)
+        if hash in map_hash_run:
+            print('Found hash!')
+            run_dir = map_hash_run[hash]
+            score_df = pd.read_csv(f'./runs/tabm_cv/{run_dir}/score.csv')
+            df_oof_preds = np.load(f'./runs/tabm_cv/{run_dir}/df_oof_preds.npy')
+            # test_preds_avg = np.load(f'./runs/tabm_cv/{run_dir}/test_preds_avg.npy')
+            return score_df['Score'].values[0]
+        else:
+            latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+            map_hash_run[hash] = f'cv_run_{latest_run + 1}'
+    
+    with open("./runs/tabm_cv/map_run_key_to_num.json", "w") as f:
+        f.write(json.dumps(map_hash_run, indent=4))  # indent=4 makes it human-readable
+    
+    
+
     for fold, (train_idx, val_idx) in enumerate(kf.split(df_train)):
         train_fold = df_train.iloc[train_idx]
         val_fold = df_train.iloc[val_idx]
         
-        hparams = {}
         
-        hparams['embedding_type'] = trial.suggest_categorical('embedding_type', ['PeriodicEmbeddings', 'PiecewiseLinearEmbeddings'])
-        hparams['n_bins'] = trial.suggest_int('n_bins', 2, 128) # prev 48
-        hparams['d_embedding'] = trial.suggest_int('d_embedding', 8, 32, step=4) # prev 16
-        hparams['n_blocks'] = trial.suggest_int("n_blocks", 1, 4)
-        hparams['d_block'] = trial.suggest_int("d_block", 64, 1024, step=16)
-        hparams['arch_type'] = trial.suggest_categorical('arch_type', ['tabm', 'tabm-mini'])
-        hparams['lr'] = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
-        hparams['weight_decay'] = trial.suggest_float("weight_decay", 1e-4, 1e-1, log=True)
-        hparams['share_training_batches'] = trial.suggest_categorical('share_training_batches', ['T', 'F'])
-
-        hparams['k'] = 32
         
         score, val_preds, test_preds = apply_tabm(hparams, train_fold, val_fold, df_test_pred, feature_cols, target_col)
         df_oof_preds.loc[df_train.index[val_idx], col_name] = val_preds
@@ -585,9 +607,16 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
         # np.save(f'{results_dir}/test_pred_fold_{fold}.npy', test_preds)
     
     mape = mean_absolute_percentage_error(df_train[col_name], df_oof_preds[col_name])
-    oof_score = 100 - 90 * mape / 2.72
+    score = 100 - 90 * mape / 2.72
     os.makedirs(f'./Ensemble_tabm/target_col/oof', exist_ok=True)
-    np.save(f'./Ensemble_tabm/target_col/oof/target_col_trial_{trial.number}_{oof_score}.npy', df_oof_preds[col_name].values)
+    np.save(f'./Ensemble_tabm/target_col/oof/target_col_trial_{trial.number}_{score}.npy', df_oof_preds[col_name].values)
+    
+    latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+    save_path = f'./runs/tabm_cv/cv_run_{latest_run + 1}'
+    os.makedirs(save_path)
+    pd.DataFrame([score], columns=['Score']).to_csv(f"{save_path}/score.csv")
+    np.save(f'{save_path}/df_oof_preds.npy', df_oof_preds[col_name].values)
+    np.save(f'{save_path}/test_preds.npy', test_preds)
     
     return 100 - 90 * mape / 2.72
         
