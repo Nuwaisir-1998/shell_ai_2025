@@ -228,11 +228,11 @@ with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
                     
                     # progress_bar = st.sidebar.progress(0)
                     # status_text = st.sidebar.empty()
-                    status_text_run_tabm.text("Running...")
+                    st.session_state.status_text_run_tabm.text("Running...")
                     def update_progress(current, total):
                         percent = current / total
-                        progress_bar_run_tabm.progress(percent)
-                        status_text_run_tabm.text(f"Processing fold {current}/{total}")
+                        st.session_state.progress_bar_run_tabm.progress(percent)
+                        st.session_state.status_text_run_tabm.text(f"Processing fold {current}/{total}")
                         
                     n_splits = int(st.session_state['tabm']['n_splits'])
                     
@@ -392,8 +392,17 @@ with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
         # if st.session_state['autogluon']['show_sidebar']:
         #     'Autogluon'
 
-progress_bar_run_tabm = st.progress(0)
+
+progress_bar_run_tabm = st.empty()
 status_text_run_tabm = st.empty()
+if "progress" not in st.session_state:
+    st.session_state.progress_bar_run_tabm = progress_bar_run_tabm.progress(0)
+    
+if "status_text_run_tabm" not in st.session_state:
+    st.session_state.status_text_run_tabm = status_text_run_tabm.text('')
+# if 'status_text_run_tabm' not in st.session_state:
+#     st.session_state.status_text_run_tabm = status_text_run_tabm.
+# status_text_run_tabm = st.empty()
     
 # with st.expander('Autogluon'):
 #     cur_model = 'autogluon'
