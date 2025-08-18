@@ -114,7 +114,6 @@ for model in models:
 options = target_cols
 
 if 'selected_target_cols' not in st.session_state:
-    'Not found'
     st.session_state['selected_target_cols'] = None
 else:
     selected_target_cols = st.session_state.selected_target_cols
@@ -127,7 +126,7 @@ selected_target_cols = st.multiselect(
 
 st.session_state['selected_target_cols'] = selected_target_cols
 
-with st.expander('TabM', expanded=True):
+with st.expander('TabM (Gorishniy et al., ICML (2025)', expanded=True):
     # with st.container(height=420):
     cur_model = 'tabm'
     # st.header('TabM')
@@ -227,12 +226,13 @@ with st.expander('TabM', expanded=True):
                     df_train = st.session_state['df_train']
                     feature_cols = st.session_state['feature_cols']
                     
-                    progress_bar = st.sidebar.progress(0)
-                    status_text = st.sidebar.empty()
+                    # progress_bar = st.sidebar.progress(0)
+                    # status_text = st.sidebar.empty()
+                    status_text_run_tabm.text("Running...")
                     def update_progress(current, total):
                         percent = current / total
-                        progress_bar.progress(percent)
-                        status_text.text(f"Processing fold {current}/{total}")
+                        progress_bar_run_tabm.progress(percent)
+                        status_text_run_tabm.text(f"Processing fold {current}/{total}")
                         
                     n_splits = int(st.session_state['tabm']['n_splits'])
                     
@@ -334,6 +334,8 @@ with st.expander('TabM', expanded=True):
                             label_visibility="collapsed",
                         )
         st.session_state['tabm']['tuner_splits'] = tuner_splits
+   
+    
     
         
     with st.sidebar:
@@ -390,7 +392,9 @@ with st.expander('TabM', expanded=True):
         # if st.session_state['autogluon']['show_sidebar']:
         #     'Autogluon'
 
-
+progress_bar_run_tabm = st.progress(0)
+status_text_run_tabm = st.empty()
+    
 # with st.expander('Autogluon'):
 #     cur_model = 'autogluon'
 #     ag_preset = st.selectbox("Preset", ['best quality', 'experimental quality'])
