@@ -17,12 +17,10 @@ df_train = pd.read_csv("./dataset/train.csv")
 df_test = pd.read_csv("./dataset/test.csv")
 df_best = pd.read_csv('./submission_cur_best+tabm_b1234_10fold(cb)_93.92695.csv')
 
-feature_cols = df_train.columns[:55]
 df_test_pred = pd.concat([df_test, df_best], axis=1)
 
-
-feature_cols = df_train.columns[:55]
-target_cols = df_train.columns[55:]
+feature_cols = df_train.columns[:55].tolist()
+target_cols = df_train.columns[55:].tolist()
 
 
 if 'df_train' not in st.session_state:
@@ -187,39 +185,44 @@ with st.container(height=420):
         df_best_hparams = None
         if st.button('Tune Hyperparameters', use_container_width=True):
             
-            n_trials = 100
+            n_trials = int(st.session_state['tabm']['n_trials'])
+            tuner_splits = int(st.session_state['tabm']['tuner_splits'])
+            seed_lower = int(st.session_state['tabm']['seed_lower'])
+            seed_upper = int(st.session_state['tabm']['seed_upper'])
             
-            for target_col in selected_target_cols:
-                def objective(trial):
-                    score = apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=100, n_splits=5)
-                    return score
-                
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                def streamlit_callback(study, trial):
-                    completed = len(study.trials)
-                    progress_bar.progress(completed / n_trials)
-                    status_text.text(f"Running trial {completed}/{n_trials}")
+            for seed in range(seed_lower, seed_upper + 1):
+                for target_col in selected_target_cols:
+                    def objective(trial):
+                        score = apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, seed=100, n_splits=tuner_splits)
+                        return score
+                    
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    def streamlit_callback(study, trial):
+                        completed = len(study.trials)
+                        progress_bar.progress(completed / n_trials)
+                        status_text.text(f"Running trial {completed}/{n_trials}")
 
-                study = optuna.create_study(sampler=TPESampler(), direction='maximize')
-                study.optimize(objective, n_trials=n_trials, callbacks=[streamlit_callback])
-                status_text.text("✅ Done!")
-                st.write("Best trial:", study.best_trial.params)
-                
-                map_hparams = study.best_params
-                map_hparams['Target'] = target_col
-                map_hparams['Score'] = study.best_value
-                map_hparams['Best trial'] = study.best_trial.number
-                df_cur_best = pd.DataFrame([map_hparams])
-                df_best_hparams = pd.concat([df_best_hparams, df_cur_best])
-                os.makedirs('./optuna/tabm_cv', exist_ok=True)
-                
-                hparam_files = glob('./optuna/tabm_cv/*_v*')
-                
-                latest_run = max([int(file_name.split('_v')[-1].split('.')[0]) for file_name in hparam_files])
-                
-                df_best_hparams.to_csv(f'./optuna/tabm_cv/hparams_cv_v{latest_run + 1}.csv')
+                    study = optuna.create_study(sampler=TPESampler(), direction='maximize')
+                    study.optimize(objective, n_trials=n_trials, callbacks=[streamlit_callback])
+                    status_text.text("✅ Done!")
+                    st.write("Best trial:", study.best_trial.params)
+                    
+                    map_hparams = study.best_params
+                    map_hparams['seed'] = seed
+                    map_hparams['Target'] = target_col
+                    map_hparams['Score'] = study.best_value
+                    map_hparams['Best trial'] = study.best_trial.number
+                    df_cur_best = pd.DataFrame([map_hparams])
+                    df_best_hparams = pd.concat([df_best_hparams, df_cur_best])
+                    os.makedirs('./optuna/tabm_cv', exist_ok=True)
+                    
+                    hparam_files = glob('./optuna/tabm_cv/*_v*')
+                    
+                    latest_run = max([int(file_name.split('_v')[-1].split('.')[0]) for file_name in hparam_files])
+                    
+                    df_best_hparams.to_csv(f'./optuna/tabm_cv/hparams_cv_v{latest_run + 1}.csv')
         
     with col_seed_lower:
         'Seed lower:'

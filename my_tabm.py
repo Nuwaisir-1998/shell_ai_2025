@@ -23,8 +23,46 @@ import os
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_percentage_error
 import optuna
+import hashlib
+import json
+from glob import glob
+
+
+def hash_dataframe(df: pd.DataFrame) -> str:
+    """Stable hash for a DataFrame (content + index)"""
+    return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
+
+def make_hash(hparams: dict, train_fold: pd.DataFrame, val_fold: pd.DataFrame,
+              df_test_pred: pd.DataFrame, feature_cols: list, target_col: str) -> str:
+    """Generate a unique hash string for given inputs"""
+    key_data = {
+        "hparams": hparams,
+        "feature_cols": feature_cols,
+        "target_col": target_col,
+        "train_hash": hash_dataframe(train_fold),
+        "val_hash": hash_dataframe(val_fold),
+        "test_hash": hash_dataframe(df_test_pred),
+    }
+    key_str = json.dumps(key_data, sort_keys=True, default=str)  # default=str handles numpy types
+    return hashlib.md5(key_str.encode()).hexdigest()
+
 
 def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col_name):
+    all_run_dirs = glob(f'./runs/tabm/run*')
+    hash = make_hash(hparams, df_train, df_val, df_test_pred, feature_cols, target_col_name)
+    with open("./runs/tabm/map_run_key_to_num.json", "r") as f:
+        map_hash_run = json.load(f)
+        if hash in map_hash_run:
+            print('Found hash!')
+            run_dir = map_hash_run[hash]
+            score_df = pd.read_csv(f'./runs/tabm/{run_dir}/score.csv')
+            val_preds = np.load(f'./runs/tabm/{run_dir}/val_preds.npy')
+            test_preds = np.load(f'./runs/tabm/{run_dir}/test_preds.npy')
+            return score_df['Score'].values[0], val_preds, test_preds
+        else:
+            latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+            map_hash_run[hash] = f'run_{latest_run + 1}'
+    
 
     # target_col: [55, 64]
     
@@ -435,6 +473,13 @@ def apply_tabm(hparams, df_train, df_val, df_test_pred, feature_cols, target_col
     # if trial.should_prune():
     #     raise optuna.exceptions.TrialPruned()
     
+    latest_run = max([int(run_dir.split('_')[-1]) for run_dir in all_run_dirs])
+    save_path = f'./runs/tabm/run_{latest_run + 1}'
+    os.makedirs(save_path)
+    pd.DataFrame([best_checkpoint["metrics"]["val"]], columns=['Score']).to_csv(f"{save_path}/score.csv")
+    np.save(f'{save_path}/val_preds.npy', val_preds)
+    np.save(f'{save_path}/test_preds.npy', test_preds)
+    
     return best_checkpoint["metrics"]["val"], val_preds, test_preds
 
 def apply_tabm_cv(hparams, df_train, df_test_pred, feature_cols, col_name, seed=42, n_splits=5, callback=None):
@@ -486,7 +531,20 @@ def apply_tabm_cv_tune(trial, df_train, df_test_pred, feature_cols, target_col, 
         train_fold = df_train.iloc[train_idx]
         val_fold = df_train.iloc[val_idx]
         
-        score, val_preds, test_preds = apply_tabm_tune(trial, train_fold, val_fold, df_test_pred, feature_cols, target_col)
+        hparams = {}
+        
+        hparams['embedding_type'] = trial.suggest_categorical('embedding_type', ['PeriodicEmbeddings', 'PiecewiseLinearEmbeddings'])
+        hparams['n_bins'] = trial.suggest_int('n_bins', 2, 128) # prev 48
+        hparams['d_embedding'] = trial.suggest_int('d_embedding', 8, 32, step=4) # prev 16
+        hparams['n_blocks'] = trial.suggest_int("n_blocks", 1, 4)
+        hparams['d_block'] = trial.suggest_int("d_block", 64, 1024, step=16)
+        hparams['arch_type'] = trial.suggest_categorical('arch_type', ['tabm', 'tabm-mini'])
+        hparams['lr'] = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+        hparams['weight_decay'] = trial.suggest_float("weight_decay", 1e-4, 1e-1, log=True)
+        hparams['share_training_batches_var'] = trial.suggest_categorical('share_training_batches', ['T', 'F'])
+
+        
+        score, val_preds, test_preds = apply_tabm(hparams, train_fold, val_fold, df_test_pred, feature_cols, target_col)
         df_oof_preds.loc[df_train.index[val_idx], col_name] = val_preds
     
         # results_dir = f'./TabM/CV_b{target_col - 55 + 1}'
